@@ -113,11 +113,20 @@ async function generateAudio(text) {
   const voiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Default to Rachel voice
   const apiKey = process.env.ELEVENLABS_API_KEY;
 
+  // Debug: Show if API key is loaded (masked for security)
+  if (apiKey) {
+    console.log(
+      `API Key loaded: ${apiKey.substring(0, 5)}...${apiKey.substring(
+        apiKey.length - 4
+      )} (${apiKey.length} chars)`
+    );
+  }
+
   if (!apiKey) {
     throw new Error("ELEVENLABS_API_KEY is not set in environment variables");
   }
 
-  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`;
 
   try {
     const response = await axios({
@@ -130,8 +139,7 @@ async function generateAudio(text) {
       },
       data: {
         text: text,
-        model_id: "eleven_monolingual_v1",
-        output_format: "mp3_44100_128",
+        model_id: "eleven_turbo_v2_5",
         voice_settings: {
           stability: 0.5,
           similarity_boost: 0.75,
@@ -154,8 +162,22 @@ async function generateAudio(text) {
     };
   } catch (error) {
     if (error.response) {
+      // Try to get detailed error message from response
+      let errorDetail = error.response.statusText;
+      try {
+        const errorData = JSON.parse(
+          Buffer.from(error.response.data).toString()
+        );
+        errorDetail =
+          errorData.detail?.message ||
+          errorData.detail ||
+          errorData.message ||
+          errorDetail;
+      } catch (e) {
+        // Response is not JSON, use statusText
+      }
       throw new Error(
-        `ElevenLabs API error: ${error.response.status} - ${error.response.statusText}`
+        `ElevenLabs API error: ${error.response.status} - ${errorDetail}`
       );
     }
     throw error;
