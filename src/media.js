@@ -237,13 +237,12 @@ async function generateAudio(text) {
  * @returns {Promise<string>} - Path to the final video file
  */
 async function processVideo(audioPath, audioDuration, text) {
-  const assetsDir = path.join(__dirname, "..", "assets");
-  const backgroundVideo = path.join(assetsDir, "gameplay.mp4");
+  const backgroundVideo = "/Users/amiljabbarli/Movies/gameplay.mp4";
   const outputPath = path.join(tempDir, "final_video.mp4");
 
   if (!fs.existsSync(backgroundVideo)) {
     throw new Error(
-      `Background video not found at ${backgroundVideo}. Please add a gameplay.mp4 file to the assets folder.`
+      `Background video not found at ${backgroundVideo}. Please add a gameplay.mp4 file to /Users/amiljabbarli/Movies/`
     );
   }
 
