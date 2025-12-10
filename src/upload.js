@@ -3,33 +3,28 @@ const { google } = require("googleapis");
 const fs = require("fs");
 const path = require("path");
 
-// Path to service account credentials
-const SERVICE_ACCOUNT_PATH = path.join(
-  __dirname,
-  "..",
-  "service_account.json"
-);
-
 /**
- * Creates an authenticated Google Drive client using Service Account
+ * Creates an authenticated Google Drive client using OAuth2
  * @returns {google.drive_v3.Drive} - Authenticated Drive client
  */
 function getDriveClient() {
-  if (!fs.existsSync(SERVICE_ACCOUNT_PATH)) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
     throw new Error(
-      `Service account file not found at ${SERVICE_ACCOUNT_PATH}. ` +
-        `Please download it from Google Cloud Console and save it as service_account.json`
+      "Missing OAuth2 credentials. Please set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN in .env"
     );
   }
 
-  const credentials = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, "utf8"));
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
 
-  const auth = new google.auth.GoogleAuth({
-    credentials: credentials,
-    scopes: ["https://www.googleapis.com/auth/drive.file"],
+  oauth2Client.setCredentials({
+    refresh_token: refreshToken,
   });
 
-  return google.drive({ version: "v3", auth });
+  return google.drive({ version: "v3", auth: oauth2Client });
 }
 
 /**
@@ -128,4 +123,3 @@ if (require.main === module) {
       process.exit(1);
     });
 }
-

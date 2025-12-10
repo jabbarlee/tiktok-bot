@@ -150,6 +150,24 @@ function generateSubtitleFilter(text, audioDuration) {
 }
 
 /**
+ * Speeds up an audio file using FFmpeg
+ * @param {string} inputPath - Path to the input audio file
+ * @param {string} outputPath - Path to the output audio file
+ * @param {number} speedFactor - Speed multiplier (e.g., 1.15 for 15% faster)
+ * @returns {Promise<void>}
+ */
+function speedUpAudio(inputPath, outputPath, speedFactor) {
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .audioFilters(`atempo=${speedFactor}`)
+      .output(outputPath)
+      .on("end", () => resolve())
+      .on("error", (err) => reject(err))
+      .run();
+  });
+}
+
+/**
  * Generates audio from text using ElevenLabs API
  * @param {string} text - The text to convert to speech
  * @returns {Promise<{path: string, duration: number}>} - Audio file path and duration in seconds
@@ -193,13 +211,25 @@ async function generateAudio(text) {
       responseType: "arraybuffer",
     });
 
+    const originalAudioPath = path.join(tempDir, "audio_original.mp3");
     const audioPath = path.join(tempDir, "audio.mp3");
-    fs.writeFileSync(audioPath, response.data);
+    fs.writeFileSync(originalAudioPath, response.data);
 
-    // Get the duration of the generated audio
+    // Speed up the audio slightly (1.15x = 15% faster)
+    const speedFactor = 1.15;
+    await speedUpAudio(originalAudioPath, audioPath, speedFactor);
+
+    // Get the duration of the sped-up audio
     const duration = await getMediaDuration(audioPath);
 
-    console.log(`Audio generated: ${audioPath} (${duration.toFixed(2)}s)`);
+    console.log(
+      `Audio generated and sped up (${speedFactor}x): ${audioPath} (${duration.toFixed(
+        2
+      )}s)`
+    );
+
+    // Clean up original audio
+    fs.unlinkSync(originalAudioPath);
 
     return {
       path: audioPath,
@@ -284,7 +314,13 @@ async function processVideo(audioPath, audioDuration, text) {
         "-map [final]",
         "-map 1:a",
         "-c:v libx264",
+        "-preset slow", // Better compression efficiency
+        "-crf 18", // High quality (18-23 is good, lower = better quality)
+        "-profile:v high", // High profile for better quality
+        "-level 4.1", // Compatibility level
+        "-pix_fmt yuv420p", // Pixel format for compatibility
         "-c:a aac",
+        "-b:a 192k", // Higher audio bitrate
         "-shortest",
       ])
       .output(outputPath)
