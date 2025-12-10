@@ -1,0 +1,17 @@
+{
+  "name": "tiktok-bot",
+  "version": "1.0.0",
+  "description": "TikTok automation bot for Reddit story content",
+  "main": "src/scraper.js",
+  "scripts": {
+    "start": "node src/scraper.js",
+    "test": "node src/scraper.js"
+  },
+  "keywords": [
+    "tiktok",
+    "reddit",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT"
+}
