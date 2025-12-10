@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { getRedditPost } = require("./src/scraper");
 const { generateAudio, processVideo } = require("./src/media");
+const { uploadToDrive } = require("./src/upload");
 
 // Ensure output directory exists
 const outputDir = path.join(__dirname, "output");
@@ -54,11 +55,17 @@ async function runBot() {
 
     console.log(`✅ Final video saved: ${finalOutputPath}`);
 
+    // Step 5: Upload to Google Drive
+    console.log("\n☁️ Step 5: Uploading to Google Drive...");
+    const driveUrl = await uploadToDrive(finalOutputPath, `${post.id}.mp4`);
+    console.log(`✅ Uploaded to Drive!`);
+
     console.log("\n" + "=".repeat(50));
     console.log("🎉 Bot completed successfully!");
-    console.log(`📹 Output: ${finalOutputPath}`);
+    console.log(`📹 Local: ${finalOutputPath}`);
+    console.log(`🔗 Drive: ${driveUrl}`);
 
-    return finalOutputPath;
+    return { localPath: finalOutputPath, driveUrl };
   } catch (error) {
     console.error("\n❌ Bot encountered an error:");
     console.error(`   ${error.message}`);
