@@ -32,7 +32,6 @@ function expandRedditShorthand(text) {
     ESH: "Everyone sucks here",
     NAH: "No assholes here",
     TIFU: "Today I fucked up",
-    TL;DR: "Too long, didn't read",
     TLDR: "Too long, didn't read",
     IMO: "In my opinion",
     IMHO: "In my humble opinion",
@@ -89,17 +88,62 @@ function containsUrl(text) {
 }
 
 /**
+ * Shuffles an array randomly (Fisher-Yates algorithm)
+ * @param {Array} array - Array to shuffle
+ * @returns {Array} - Shuffled array
+ */
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+/**
  * Fetches a suitable Reddit post for TikTok content using public JSON endpoint
+ * Randomizes subreddit, sorting method, and post selection for variety
  * @returns {Promise<{title: string, content: string, id: string} | null>}
  */
 async function getRedditPost() {
-  const subreddits = ["confessions", "scarystories"];
+  const subreddits = [
+    "confessions",
+    "TrueOffMyChest",
+    "tifu",
+    "AmItheAsshole",
+    "relationship_advice",
+    "pettyrevenge",
+    "MaliciousCompliance",
+    "entitledparents",
+  ];
+
+  // Different sorting options for variety
+  const sortOptions = [
+    { sort: "hot", params: "" },
+    { sort: "new", params: "" },
+    { sort: "top", params: "&t=day" },
+    { sort: "top", params: "&t=week" },
+    { sort: "rising", params: "" },
+  ];
+
   const MIN_LENGTH = 600;
   const MAX_LENGTH = 2000;
 
-  for (const subredditName of subreddits) {
+  // Collect all valid posts from randomized sources
+  const validPosts = [];
+
+  // Shuffle subreddits and pick a few random ones
+  const shuffledSubreddits = shuffleArray(subreddits).slice(0, 3);
+  const randomSort = sortOptions[Math.floor(Math.random() * sortOptions.length)];
+
+  console.log(
+    `Searching: r/${shuffledSubreddits.join(", r/")} (${randomSort.sort})`
+  );
+
+  for (const subredditName of shuffledSubreddits) {
     try {
-      const url = `https://www.reddit.com/r/${subredditName}/top.json?t=day&limit=5`;
+      const url = `https://www.reddit.com/r/${subredditName}/${randomSort.sort}.json?limit=25${randomSort.params}`;
 
       const response = await axios.get(url, {
         headers: {
@@ -140,19 +184,36 @@ async function getRedditPost() {
           continue;
         }
 
-        return {
+        validPosts.push({
           title: post.title,
           content: cleanedContent,
           id: post.id,
-        };
+          subreddit: subredditName,
+        });
       }
     } catch (error) {
       console.error(`Error fetching from r/${subredditName}:`, error.message);
     }
   }
 
-  console.log("No suitable posts found matching criteria.");
-  return null;
+  if (validPosts.length === 0) {
+    console.log("No suitable posts found matching criteria.");
+    return null;
+  }
+
+  // Pick a random post from all valid posts
+  const randomIndex = Math.floor(Math.random() * validPosts.length);
+  const selectedPost = validPosts[randomIndex];
+
+  console.log(
+    `Found ${validPosts.length} valid posts, selected from r/${selectedPost.subreddit}`
+  );
+
+  return {
+    title: selectedPost.title,
+    content: selectedPost.content,
+    id: selectedPost.id,
+  };
 }
 
 module.exports = { getRedditPost };

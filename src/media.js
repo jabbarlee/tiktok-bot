@@ -133,7 +133,7 @@ function generateSubtitleFilter(text, audioDuration) {
     return (
       `drawtext=text='${escapedText}':` +
       `fontfile=/System/Library/Fonts/Supplemental/Arial Bold.ttf:` +
-      `fontsize=48:` +
+      `fontsize=18:` +
       `fontcolor=white:` +
       `borderw=3:` +
       `bordercolor=black:` +
@@ -141,7 +141,7 @@ function generateSubtitleFilter(text, audioDuration) {
       `shadowx=2:` +
       `shadowy=2:` +
       `x=(w-text_w)/2:` +
-      `y=h*0.70:` +
+      `y=h*0.40:` +
       `enable='between(t,${startTime.toFixed(3)},${endTime.toFixed(3)})'`
     );
   });
