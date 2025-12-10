@@ -1,13 +1,9 @@
 require("dotenv").config();
-const Snoowrap = require("snoowrap");
+const axios = require("axios");
 
-const reddit = new Snoowrap({
-  userAgent: "TikTok Bot v1.0",
-  clientId: process.env.REDDIT_CLIENT_ID,
-  clientSecret: process.env.REDDIT_CLIENT_SECRET,
-  username: process.env.REDDIT_USERNAME,
-  password: process.env.REDDIT_PASSWORD,
-});
+// User-Agent header required to avoid being blocked by Reddit
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
 
 /**
  * Cleans post content by removing edit sections
@@ -36,7 +32,7 @@ function containsUrl(text) {
 }
 
 /**
- * Fetches a suitable Reddit post for TikTok content
+ * Fetches a suitable Reddit post for TikTok content using public JSON endpoint
  * @returns {Promise<{title: string, content: string, id: string} | null>}
  */
 async function getRedditPost() {
@@ -46,16 +42,30 @@ async function getRedditPost() {
 
   for (const subredditName of subreddits) {
     try {
-      const subreddit = reddit.getSubreddit(subredditName);
-      const posts = await subreddit.getTop({ time: "day", limit: 3 });
+      const url = `https://www.reddit.com/r/${subredditName}/top.json?t=day&limit=5`;
 
-      for (const post of posts) {
+      const response = await axios.get(url, {
+        headers: {
+          "User-Agent": USER_AGENT,
+        },
+      });
+
+      const posts = response.data.data.children;
+
+      for (const postWrapper of posts) {
+        const post = postWrapper.data;
+
         // Skip if it's not a self post (text post)
         if (!post.is_self) {
           continue;
         }
 
         const rawContent = post.selftext;
+
+        // Skip empty posts
+        if (!rawContent || rawContent.length === 0) {
+          continue;
+        }
 
         // Skip posts with URLs
         if (containsUrl(rawContent)) {
