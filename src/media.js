@@ -185,7 +185,9 @@ async function processVideo(audioPath, audioDuration, text) {
 
   if (videoTotalDuration < audioDuration) {
     throw new Error(
-      `Background video (${videoTotalDuration.toFixed(2)}s) is shorter than audio (${audioDuration.toFixed(2)}s)`
+      `Background video (${videoTotalDuration.toFixed(
+        2
+      )}s) is shorter than audio (${audioDuration.toFixed(2)}s)`
     );
   }
 
@@ -200,7 +202,9 @@ async function processVideo(audioPath, audioDuration, text) {
   const filterChain = `[0:v]crop=ih*(9/16):ih[cropped];[cropped]${subtitleFilter}[final]`;
 
   console.log(
-    `Processing video: start=${startTime.toFixed(2)}s, duration=${audioDuration.toFixed(2)}s`
+    `Processing video: start=${startTime.toFixed(
+      2
+    )}s, duration=${audioDuration.toFixed(2)}s`
   );
   console.log(`Subtitle chunks: ${splitTextIntoChunks(text, 4).length}`);
 
@@ -261,4 +265,3 @@ if (require.main === module) {
       console.error("Error:", error.message);
     });
 }
-

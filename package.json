@@ -2,10 +2,11 @@
   "name": "tiktok-bot",
   "version": "1.0.0",
   "description": "TikTok automation bot for Reddit story content",
-  "main": "src/scraper.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/scraper.js",
-    "test": "node src/scraper.js"
+    "start": "node index.js",
+    "test:scraper": "node src/scraper.js",
+    "test:media": "node src/media.js"
   },
   "keywords": [
     "tiktok",
