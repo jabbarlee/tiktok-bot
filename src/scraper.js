@@ -6,13 +6,70 @@ const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
 
 /**
+ * Expands Reddit shorthand into readable text for TTS
+ * @param {string} text - Text with Reddit shorthand
+ * @returns {string} - Expanded text
+ */
+function expandRedditShorthand(text) {
+  let expanded = text;
+
+  // Expand age/gender patterns like "34f", "35m", "28F", "30M"
+  // Also handles formats like (34f), [35m], 34F, etc.
+  expanded = expanded.replace(
+    /\b(\d{1,2})\s*([fFmM])\b/g,
+    (match, age, gender) => {
+      const genderWord =
+        gender.toLowerCase() === "f" ? "year old female" : "year old male";
+      return `${age} ${genderWord}`;
+    }
+  );
+
+  // Common Reddit abbreviations
+  const abbreviations = {
+    AITA: "Am I the asshole",
+    YTA: "You're the asshole",
+    NTA: "Not the asshole",
+    ESH: "Everyone sucks here",
+    NAH: "No assholes here",
+    TIFU: "Today I fucked up",
+    TL;DR: "Too long, didn't read",
+    TLDR: "Too long, didn't read",
+    IMO: "In my opinion",
+    IMHO: "In my humble opinion",
+    TBH: "To be honest",
+    AFAIK: "As far as I know",
+    IIRC: "If I remember correctly",
+    SO: "significant other",
+    BF: "boyfriend",
+    GF: "girlfriend",
+    DH: "dear husband",
+    DW: "dear wife",
+    MIL: "mother in law",
+    FIL: "father in law",
+    SIL: "sister in law",
+    BIL: "brother in law",
+  };
+
+  for (const [abbr, full] of Object.entries(abbreviations)) {
+    // Case insensitive replacement for standalone abbreviations
+    const regex = new RegExp(`\\b${abbr}\\b`, "gi");
+    expanded = expanded.replace(regex, full);
+  }
+
+  return expanded;
+}
+
+/**
  * Cleans post content by removing edit sections
  * @param {string} text - The raw post text
  * @returns {string} - Cleaned text
  */
 function cleanContent(text) {
+  // First expand Reddit shorthand
+  let cleaned = expandRedditShorthand(text);
+
   // Remove "Edit:", "EDIT:", "Update:", "UPDATE:" sections and everything after them on that line
-  let cleaned = text.replace(/\b(edit|update)\s*:.*$/gim, "");
+  cleaned = cleaned.replace(/\b(edit|update)\s*:.*$/gim, "");
 
   // Remove multiple consecutive newlines
   cleaned = cleaned.replace(/\n{3,}/g, "\n\n");

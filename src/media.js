@@ -32,18 +32,42 @@ function getMediaDuration(filePath) {
 }
 
 /**
- * Splits text into chunks of approximately 4-5 words
+ * Splits text into chunks optimized for vertical video display
+ * Limits both word count and character count per chunk
  * @param {string} text - The full text to split
- * @param {number} wordsPerChunk - Number of words per chunk (default 4)
+ * @param {number} wordsPerChunk - Max words per chunk (default 3)
+ * @param {number} maxCharsPerChunk - Max characters per chunk (default 25)
  * @returns {string[]} - Array of text chunks
  */
-function splitTextIntoChunks(text, wordsPerChunk = 4) {
+function splitTextIntoChunks(text, wordsPerChunk = 3, maxCharsPerChunk = 25) {
   const words = text.split(/\s+/).filter((word) => word.length > 0);
   const chunks = [];
+  let currentChunk = [];
+  let currentLength = 0;
 
-  for (let i = 0; i < words.length; i += wordsPerChunk) {
-    const chunk = words.slice(i, i + wordsPerChunk).join(" ");
-    chunks.push(chunk);
+  for (const word of words) {
+    const wouldBeLength =
+      currentLength + word.length + (currentChunk.length > 0 ? 1 : 0);
+
+    // Start new chunk if adding word would exceed limits
+    if (
+      currentChunk.length >= wordsPerChunk ||
+      (currentLength > 0 && wouldBeLength > maxCharsPerChunk)
+    ) {
+      if (currentChunk.length > 0) {
+        chunks.push(currentChunk.join(" "));
+      }
+      currentChunk = [word];
+      currentLength = word.length;
+    } else {
+      currentChunk.push(word);
+      currentLength = wouldBeLength;
+    }
+  }
+
+  // Don't forget the last chunk
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join(" "));
   }
 
   return chunks;
@@ -68,35 +92,56 @@ function escapeDrawtext(text) {
 
 /**
  * Generates FFmpeg drawtext filter string for subtitles
+ * Uses character-weighted timing for better sync with speech
  * @param {string} text - The full text to display as subtitles
  * @param {number} audioDuration - Total duration of the audio in seconds
  * @returns {string} - FFmpeg filter string for drawtext
  */
 function generateSubtitleFilter(text, audioDuration) {
-  const chunks = splitTextIntoChunks(text, 4);
-  const chunkDuration = audioDuration / chunks.length;
+  const chunks = splitTextIntoChunks(text, 3, 25);
+
+  // Calculate total character count for weighted timing
+  const totalChars = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+
+  // Build timing based on character count (longer chunks get more time)
+  let currentTime = 0;
+  const timings = chunks.map((chunk) => {
+    // Weight by character count, with a minimum duration
+    const weight = chunk.length / totalChars;
+    const duration = Math.max(weight * audioDuration, 0.5); // At least 0.5s per chunk
+    const startTime = currentTime;
+    currentTime += duration;
+    return { chunk, startTime, endTime: currentTime };
+  });
+
+  // Normalize timings to fit exactly within audioDuration
+  const scale = audioDuration / currentTime;
+  timings.forEach((t) => {
+    t.startTime *= scale;
+    t.endTime *= scale;
+  });
 
   // Build drawtext filters for each chunk
-  const drawtextFilters = chunks.map((chunk, index) => {
-    const startTime = index * chunkDuration;
-    const endTime = (index + 1) * chunkDuration;
+  const drawtextFilters = timings.map(({ chunk, startTime, endTime }) => {
     const escapedText = escapeDrawtext(chunk);
 
     // drawtext filter with:
-    // - Yellow text (fontcolor=yellow)
-    // - Black border/outline (borderw=2, bordercolor=black)
-    // - Font size 24
-    // - Centered position
-    // - Enable only during chunk's time window
+    // - White text for better visibility
+    // - Black border/shadow for contrast
+    // - Larger font size (48) for vertical video
+    // - Centered horizontally, positioned at 70% height (lower third area)
     return (
       `drawtext=text='${escapedText}':` +
       `fontfile=/System/Library/Fonts/Supplemental/Arial Bold.ttf:` +
-      `fontsize=24:` +
-      `fontcolor=yellow:` +
-      `borderw=2:` +
+      `fontsize=48:` +
+      `fontcolor=white:` +
+      `borderw=3:` +
       `bordercolor=black:` +
+      `shadowcolor=black:` +
+      `shadowx=2:` +
+      `shadowy=2:` +
       `x=(w-text_w)/2:` +
-      `y=(h-text_h)/2:` +
+      `y=h*0.70:` +
       `enable='between(t,${startTime.toFixed(3)},${endTime.toFixed(3)})'`
     );
   });
@@ -228,7 +273,7 @@ async function processVideo(audioPath, audioDuration, text) {
       2
     )}s, duration=${audioDuration.toFixed(2)}s`
   );
-  console.log(`Subtitle chunks: ${splitTextIntoChunks(text, 4).length}`);
+  console.log(`Subtitle chunks: ${splitTextIntoChunks(text, 3, 25).length}`);
 
   return new Promise((resolve, reject) => {
     ffmpeg()
